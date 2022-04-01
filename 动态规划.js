@@ -175,7 +175,7 @@ function uniquePathsWithObstacles(grids) {
 }
 
 /**
- * 343 @正整数拆分
+ * 343. @正整数拆分
  * 给定一个正整数 n ，将其拆分为 k 个 正整数 的和（ k >= 2 ），并使这些整数的乘积最大化。
  * 返回 你可以获得的最大乘积。
  * 输入: n = 2
@@ -208,6 +208,103 @@ function integerBreak(n) {
     }
     return dp[n];
 }
+
 /**
- * @背包问题
+ * @背包问题：01背包
+ * 所谓的 01 背包，就是给定的物品只有 1 个，只能选择或者不选择，即选择 0 个还是 1 个，所以称为 01背包。
+*/
+/**
+ * 经典01背包。给定一个二维数组 nums，数组元素第一项代表物品重量，第二项代表物品价值，求，给定容量为 k 的背包，
+ * 最大可以装价值多少的物品，返回总价值数。
  */
+/**
+ * @思路
+ * 1. 暴力破解，回溯算法。不会
+ * 2. 动态规划。
+ *  - 1. 定义状态，定义dp数组含义。定义dp为二维数组 dp[i][j]，表示第 i 个物品放进背包容量为 j 的背包内时，背包的价值。
+ *  - 2. 确定状态转移方程，从上面的状态定义中推论。对于第 i 个要放入容量为 j 的背包来说，可以选择放入 i 或者不放入 i，取放入 i 与不放入 i 的价值最大的即可。
+ *      1> 如果不放 i，那么dp[i][j] = dp[i - 1][j];
+ *      2> 同样是不放入 i，此时背包价值为：dp[i - 1][j - weight[i]]，那么放入 i 时，背包价值就是 dp[i - 1][j - weight[i]] + values[i];
+ *  - 3. 初始化状态，从状态定义和转移方程可知，i 为 0 时，所有容量的背包价值是 values[0]; 背包容量 j 为 0 时，每个 i 都不能放入。
+ *      所以初始化分两种
+ *  - 4. 循环顺序，表面上无法看出是先循环物品还是先循环背包容量。先写着，让子弹飞一会儿。
+ */
+function maxBagValue(nums, k) {
+    // 条件判断
+    if (!nums || !nums.length || !k) return 0;
+    // 拆值
+    const weights = nums.map(g => g[0]);
+    const values = nums.map(g => g[1]);
+    const length = nums.length;
+    // 定义数组函数
+    const dp = new Array(nums.length).fill(0).map(_ => new Array(k).fill(0));
+    // 初始化dp时填充了0，所以下面的可以不用初始化
+    // for (let i = 0; i < length; i++) {
+    //     dp[i][0] = 0;
+    // }
+
+    for (let j = weights[0]; j < k; j++) {
+        dp[0][j] = values[0];
+    }
+    // 不知道该先循环谁，那就随便来个看看，物品从1开始循环，为0的话，在前面已经初始化过了，没必要循环0.
+    for (let i = 1; i < nums.length; i++) {
+        for (let j = 0; j <= k; j++) {
+            if (j < weights[i]) {
+                // 条件是背包容量小于了物品重量，所以只能选择不放。
+                dp[i][j] = dp[i - 1][j];
+            } else {
+                // 否则可以放入，那么就要选择不放入和放入两种情况中的最大值。
+                dp[i][j] = Math.max(dp[i - 1][j], dp[i - 1][j - weight[i]] + values[i])
+            }
+        }
+    }
+    return dp[length - 1][k]
+}
+
+/**
+ * 
+ * @空间优化
+ * 对于任意的 i 的物品，放入背包的价值至于dp[i - 1]有关，与i - 2, i - 3无关，所以这部分的空间占用是可以优化掉的。
+ * 尝试可以将这一维的空间去掉
+ */
+function maxBagValue(nums, k) {
+    // 条件判断
+    if (!nums || !nums.length || !k) return 0;
+    // 拆值
+    const weights = nums.map(g => g[0]);
+    const values = nums.map(g => g[1]);
+    const length = nums.length;
+    const dp = new Array(k).fill(0);
+
+}
+
+/**
+ * 416. @分割等和子集
+ * 给定一个只包含正整数的非空数组。是否可以将这个数组分割成两个子集，使得两个子集的元素和相等。
+ * 输入: [1, 5, 11, 5]
+ * 输出: true
+ * 解释: 数组可以分割成 [1, 5, 5] 和 [11].
+ * @思路
+ * 需要使两个子数组的和相等，那么只需要找到其中一个子数组的和为整个数组和的一半即可。target = sum / 2;
+ * 1. target  = sum / 2;
+ * 2. 找任意个元素的和为 target，好比从 nums 中寻找 n 个元素放入容量为 target 的背包内；
+ * 3. 转化为01背包问题。
+ * @动态规划
+ */
+function canPartition(nums) {
+    // 1. 定义状态，dp[i] 表示，集合和为i，可以凑成的子集合总和为dp[i]。i代表背包容量，dp[i] 为背包价值
+    // 2. 状态转移方程，与背包问题类似，dp[j] = Math.max(dp[j], dp[j - nums[i]] + nums[i]);
+    // 3. 初始化状态：dp[0] = 0; 其余项初始化为0
+    // 4. 确定遍历顺序。与简化版背包问题相同，j需要从大大小循环，否则会覆盖i的值。
+    if (!nums || nums.length < 2) return false;
+    const sum = nums.reduce((all, n) => all + n, 0);
+    if (sum % 2 === 1) return false; // 和为奇数不可分两份相同大小的。
+    const target = sum / 2;
+    const length = nums.length;
+    for (let i = 0; i < length; i++) {
+        for (let j = target; j >= nums[i]; j--) {
+            dp[j] = Math.max(dp[j], dp[j - nums[i]] + nums[i]);
+        }
+    }
+    return dp[target] === target;
+}
