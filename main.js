@@ -1,20 +1,35 @@
-// 两数相加，两个链表
-const twoSum = function(l1, l2) {
-	let indent = 0; 
-	let head = null;
-	let tail = null;
+/**
+ * 1. 两数相加，两个链表
+ * @思路
+ * 见注释
+ */
+
+function ListNode(val, next) {
+	this.val = (val === undefined ? 0 : val)
+	this.next = (next === undefined ? null : next)
+}
+var addTwoNumbers = function (l1, l2) {
+	// 1. 因为要从右向左逐位相加，所以涉及到进位操作，个位 + 个位 > 10，需要进位操作
+	// 所以要设置进位值
+	// 2. l1 的节点和 l2的节点相加，将结果存于res中，res只单个节点，随着位数的相加，需要不停的移动到下一个位置上
+	let carry = 0;
+	let cur = null;
+	let res = null;
 	while (l1 || l2) {
-		const val1 = l1 ? l1.val : 0;
-		const val2 = l2 ? l2.val : 0;
-		const sum = val1 + val2 + indent; // 求和
-		// 双指针？
-		if (!head) {
-			head = tail = new ListNode(sum % 10); // 初始化结果链表
+		const v1 = l1 ? l1.val : 0;
+		const v2 = l2 ? l2.val : 0;
+		const sum = v1 + v2 + carry;
+		if (!cur) {
+			cur = new ListNode(sum % 10);
+			res = cur; // 保存结果的开始节点，因为是链表，所以保存开始节点即可，后面的都会有的
 		} else {
-			tail.next = new ListNode(sum % 10); // 最后一个指向新增的
-			tail = tail.next;
+			cur.next = new ListNode(sum % 10);
+			cur = cur.next;
 		}
-		indent = Math.floor(sum / 10);
+		// 取进位值，或者这里直接 carry = sum >= 10 ? 1 : 0; 因为题目描述中
+		// 9 >= Node.val >= 0，所以sum不可能大于19的。
+		carry = Math.floor(sum / 10);
+		// 移动l1和l2
 		if (l1) {
 			l1 = l1.next;
 		}
@@ -22,13 +37,62 @@ const twoSum = function(l1, l2) {
 			l2 = l2.next;
 		}
 	}
-	if (indent > 0) {
-		tail.next = new ListNode(indent);
+	// 所有的循环结束后，需要看最后剩余的carry是不是还有没被处理的进位，如果有,
+	// 那么需要拼接到最后以为的后面
+	if (carry > 0) {
+		cur.next = new ListNode(carry);
 	}
-	return head;
+	return res;
+};
+
+/**
+ * 3. 无重复字符的最长子串
+ * @思路
+ * - 暴力枚举，固定第 i 个字符，之后逐个向后加 1 ，记录位置，复杂度是 O(n2)，最坏情况每个字符都要被遍历两边
+ * - 滑动窗口。对于给定的字符串s: abcabcbb，尝试枚举分别以每个字符开头的最长子字符串：
+ * 	- 以(a)bcabcbb开头,最长子字符串为(abc)abcbb;
+ * 	- 以a(b)cabcbb开头,最长子字符串为a(bca)bcbb;
+ * 	- 以ab(c)abcbb开头,最长子字符串为ab(cab)cbb;
+ * 	- 以abc(a)bcbb开头,最长子字符串为abc(abc)bb;
+ * 	- 以abca(b)cbb开头,最长子字符串为abca(bc)bb;
+ *  - ...
+ * 观察开头字符、最长子字符串的结尾。对于以k为开头，以rk结束的子字符串，随着k的向右移动，rk也是向右移动的。对于 k+1 ~ rk
+ * 之间的字符，肯定是不会重复的，因为 k - rk 是不重复的，所以去掉 k ，也是不重复的，于是对于 k ~ rk 中间的字符，是没必要
+ * 继续循环比较的。对于 k ~ rk 所组成的区间，可以认为是一个窗口，这个窗口在字符串中滑动并调整窗口的左右边界，直到找到最长的。
+ * 边界条件：
+ *  - 要判断字符是否重复，除了使用字符串原生的 s[i] 还可以使用性能更好的 Set() 来判断；
+ *  - 右边界 right：边界是字符串的长度length，即 right < length;
+ *  - 右边界字符：右边界所在字符一旦在窗口(window)里再次出现，即跳出内层循环，左边界加一；
+ *  - 左边界每次向右移动一步，就要从窗口里把上一个左边界排除掉，window.delete(left - 1);
+ *  - 左边界每移动一次，就记录一次当前遍历中出现的最大子字符串长度。
+ */
+function lengthOfLongestSubstring(s) {
+	// 字符边界判断，减少计算；
+	if (!s || !s.length) return 0;
+	if (s.length < 2) return s.length;
+	// 右边界初始值为0，题解中这里设置为 -1，有一定的误导性，其实设置为 0 更好理解。
+	let right = 0;
+	const length = s.length;
+	let res = 0;
+	// 滑动窗口里的内容
+	const window = new Set();
+	for (let left = 0; left < s.length; left++) {
+		// 窗口左移，意味着要要将原原来左边界内的东西去掉
+		if (left !== 0) {
+			window.delete(s[left - 1]);
+		}
+		// 边界条件是 right 抵达字符串最右侧，并且窗口中不含有重复的内容
+		while (right < length && !window.has(s[right])) {
+			window.add(s[right]);
+			right += 1;
+		}
+		// 每次循环拿到最大长度值的存起来
+		res = Math.max(res, window.size);
+	}
+	return res;
 }
 
-// 合并排序
+// 88. 合并两个有序数组
 // 给定两个递增数组，nums1，长度为m，nums2，长度为n，需要合并两个数组，合并之后的数组同样满足递增排序。
 // 最终合并后的数组不应该返回，而是存在nums1中。所以nums数组的初始长度是m + n，其中前m个元素为要被合并的元素，后n个元素为0
 // 采用双指针方法，从头比较两个元素。
@@ -60,15 +124,17 @@ var merge = function(nums1, m, nums2, n) {
 		nums1[i] = sorted[i];
 	}
 }
-// 最长回文子字符串
+// 4. 最长回文子字符串
 // 给你一个字符串 s，找到 s 中最长的回文子串
 /**
  * 暴力解法，找到每一个以i为开始坐标，以j为结束坐标的子字符串判断是否为回文，如果是，就保存起始坐标和长度，
  * 最终判断选择长度最长的那个字符串返回即可。
  **/ 
  function longestPalindrome(s) {
- 	if (!s || !s.length || s.length < 2) return s;
+	 if (!s || !s.length || s.length < 2) return s;
+	 // 初始化maxLength 为1，单个字符也是回文，所以长度是1.
  	let begin = 0, maxLength = 1, length = s.length;
+	// 转为数组，也可以选择不转
  	const arr = s.split('');
  	for (let i = 0; i < length - 1; i++) {
  		for (let j = i + 1; j < length; j++) {
@@ -157,7 +223,7 @@ function longestPalindrome(s) {
  * 	- 对于任意的dp[i][j]所对应的字符串，是回文的条件是满足：dp[i][j] = dp[i-1][j+1] && s.subString(i, j).length > 2 && s[i] === s[j]；
  * 初始条件：
  * 	- 设置每个单字符的子串为true，for(let i = 0; i < s.length; i++) { dp[i][j] = true; }
- * 	- 对于每一个s[i...j]，应该满足 j > i && j - 1 - (i + 1) + 1 > 2，整理得：j - i > ;
+ * 	- 对于每一个s[i...j]，应该满足 j > i && j - 1 - (i + 1) + 1 > 2，整理得：j - i > 3;
  * 输出：
  * 	- 记录最长的长度；
  * 	- 记录最长长度所在起始位置；
@@ -195,7 +261,7 @@ function longestPalindrome(s) {
 	return s.substring(begin, begin + maxLength);
 }
 /**
- * 最大子数组和
+ * 53. 最大子数组和
  * 给定一个数组，要求找具有最大和的连续子数组，
  * [-2, -1, 1, 3, -2, 4, 5, -3], 返回11，最长子数组是 [1, 3, -2, 4, 5]
 **/
@@ -203,6 +269,30 @@ function longestPalindrome(s) {
 // 以此类推，可以找到其中的第一个值，可以以nums[0]开始，那么就是 sum1 = max(nums[0], nums[0] + nums[1]);
 // sum2 = max(sum1, sum1 + nums[2]);
 // 所以这里以一个循环开始
+var maxSubArray = function (nums) {
+	// 动态规划
+	// 可以认为最大子数组最后一位是nums[n]，那么该子数组之和是sum[n] = sum[n - 1] + nums[n];
+	// 对于当前元素，可以选择加也可以选择不加，如果是负数，那么就不加，否则和将变小。所以每次都要取
+	// 总和与上次和的最大值。
+	// 1. 状态定义，定义dp[i]，表示以 nums[i] 结束的子数组的和；
+	// 2. 状态转移：如果是子序列的话，dp[i] = Math.max(dp[i - 1] + nums[i], dp[i - 1])，
+	// 连续子数组是指的当前数组中的子集，所以dp[i] = Math.max(dp[i - 1] + nums[i], nums[i]);
+	// 如果nums[i]要大于dp[i - 1] + nums[i]，那么说明上一步计算出来的是负值，所以需要抛弃并以当前位置重新开始
+	// 子数组。
+	// 3. 初始化，dp[0] = nums[0]，dp[1] = Math.max(nums[0], nums[0] + nums[1]),可以看出dp[1]其实已经
+	// 满足状态转移方程了，所以初始化dp[0]即可.
+	// 4. 循环顺序，就一次循环
+	if (!nums || !nums.length || nums.length < 2) return nums[0];
+	const length = nums.length;
+	const dp = [nums[0]];
+	let sum = nums[0];
+	for (let i = 1; i < length; i++) {
+		dp[i] = Math.max(dp[i - 1] + nums[i], nums[i]);
+		sum = Math.max(sum, dp[i])
+	}
+	return sum;
+};
+// 空间优化后
 function maxSubArray(nums) {
 	let prevSum = 0;
 	let sum = nums[0];
@@ -213,7 +303,7 @@ function maxSubArray(nums) {
 	return sum;
 }
 /**
- * 最长上升子序列的长度
+ * 300. 最长上升子序列的长度
  * 给定一个无序数组，找到其中最长严格递增子序列的长度。
  * 输入：[10,9,2,5,3,7,101,18]
  * 输出：4 // 最长子序列是[2,3,7,101]，长度是4
@@ -244,7 +334,7 @@ function lengthOfLIS(nums) {
 	return maxLength;
 }
 /**
- * 最长上升子序列的个数，同上题，不同的是要找出可以组成最长上升子序列的所以集合的个数
+ * 673. 最长上升子序列的个数，同上题，不同的是要找出可以组成最长上升子序列的所以集合的个数
  * [10,9,2,5,3,7,101,18]
  * 定义状态：
  * 	- 同样记录dp[i]为以nums[i]为结尾的子序列的长度；
@@ -282,7 +372,7 @@ function numberOfLIS(nums) {
 	return result;
 }
 /**
- * 最小路径和，给定一个矩阵，找出从矩阵最上角出发，到右下角的最小路径和
+ * 64. 最小路径和，给定一个矩阵，找出从矩阵最上角出发，到右下角的最小路径和
  * 1,  1,  3
  * 1,  5,  1,
  * 4,  2,  1,
@@ -368,7 +458,7 @@ function rob(nums) {
 
 /**
  * 打家劫舍2
- * 同打家劫舍1，不同的地方是房间是收尾相连的环状分布，请问最多能够偷到多少财富
+ * 同打家劫舍1，不同的地方是房间是首尾相连的环状分布，请问最多能够偷到多少财富
  * 输入: [1,2,3,1]
  * 输出：4, 只能偷1、3或2、4
  * 输入：[1,3,4,2,3]
@@ -411,6 +501,7 @@ function rob(nums) {
 
 
 /**
+ * 152. 乘积最大子数组
  * 给你一个整数数组 nums ，请你找出数组中乘积最大的非空连续子数组（该子数组中至少包含一个数字），并返回该子数组所对应的乘积。
  * 输入：[2,3,-2,4]
  * 输出：6
@@ -438,7 +529,7 @@ function maxProduct(nums) {
 	const imin = [nums[0]]; // 保存最小的
 	for (let i = 1; i < length; i++) {
 		imax[i] = Math.max(imax[i - 1] * nums[i], nums[i], imin[i - 1] * nums[i]);
-		imin[i] = Math.max(imax[i - 1] * nums[i], nums[i], imin[i - 1] * nums[i]);
+		imin[i] = Math.min(imax[i - 1] * nums[i], nums[i], imin[i - 1] * nums[i]);
 	}
 	for (let i = 1; i < length; i++) {
 		max = Math.max(max, imax[i]);
@@ -460,7 +551,7 @@ function maxProduct(nums) {
 
 
  /**
-  * 查找两个递增数组的中位数
+  * 5. 查找两个递增数组的中位数
   * 输入：[1,2,3],[4,5,6]
   * 输出：3.5 因为 [1,2,3,4,5,6] 的中位数是 (3+4)/2
   * 思路1：归并排序简化版
@@ -549,12 +640,12 @@ function merge(left, right) {
 }
 
 /**
- * 字符串Z字行变换
+ * 6. 字符串Z字行变换
  * 对于给定字符串s = 'PABCBDZQY'，对字符串每个字符做z字形排列，排列R行。举例 s 变化后的结果是，R = 3：
  * P     B     Y
  * A  C  D  Q
  * B     Z
- * 排列方向是，左上角出发，向下排列R行，向右上方排列到顶部，再向下排列。↓ ↗ ↓。
+ * 排列方向是，左上角出发，向下排列 R 行，向右上方排列到顶部，再向下排列。↓ ↗ ↓。
  * 返回从左到右，从上到下读取到的字符串。
  * 思路：
  * 	1. 构造二维数组的表格，按下标填充字符串，找到填充位置的规律。
@@ -562,7 +653,7 @@ function merge(left, right) {
 **/
 function convert(s, cols) {
 	if (!s || !s.length || s.length) return '';
-	if (s <= cols) return s;
+	if (s.length <= cols) return s;
 	const length = s.length;
 	const arr = s.split('');
 	// 计算当前的字符串可以填充的二维数组子项长度，每个cols * cols可填充的字数是 cols(边) + cols(边) + cols - 2(对角线)
@@ -608,7 +699,7 @@ function convert(s, cols) {
 	return matrix.map(item => item.join('')).join('');
 }
 /**
- * 整数反转。
+ * 7. 整数反转。
  * 给定一个32位有符号整数x，返回将x中的数字部分反转后的结果。仅限数学编程方法，不可以使用字符串转化。
  * 如果翻转后的值大于Math.pow(2, 31)或小于Math.pow(-2, -31)，返回0即可。
  * 输入：123
