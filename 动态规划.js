@@ -192,7 +192,7 @@ function uniquePathsWithObstacles(grids) {
  * 所以满足动态规划的条件。
  */
 function integerBreak(n) {
-    // 1. 定义状态，定义动态规划数字 dp[i] 的含义。dp[i] 标识将 n 拆成至少 2 个整数的和后，他们的乘积。
+    // 1. 定义状态，定义动态规划数字 dp[i] 的含义。dp[i] 标识将 n 拆 i (成至少 2) 个整数的和后，他们的乘积。
     const dp = [0, 0, 1]; // 初始化
     // 2. 确定状态转移方程，根据思路中的结论，dp[i] = Math.max(j * (i - j), j * dp[i - j]);
     // 3. 状态初始化。0 和 1 都是不可再次拆分的整数，其中 0 不是正整数，所以初始化有 dp[0] = dp[1] = 0;
@@ -229,7 +229,7 @@ function integerBreak(n) {
  *      所以初始化分两种
  *  - 4. 循环顺序，表面上无法看出是先循环物品还是先循环背包容量。先写着，让子弹飞一会儿。
  */
-function maxBagValue(nums, k) {
+function knapsackProblem(nums, k) {
     // 条件判断
     if (!nums || !nums.length || !k) return 0;
     // 拆值
@@ -249,8 +249,8 @@ function maxBagValue(nums, k) {
     // 不知道该先循环谁，那就随便来个看看，物品从1开始循环，为0的话，在前面已经初始化过了，没必要循环0.
     for (let i = 1; i < nums.length; i++) {
         for (let j = 0; j <= k; j++) {
+            // 条件是背包容量小于了物品重量，所以只能选择不放。
             if (j < weights[i]) {
-                // 条件是背包容量小于了物品重量，所以只能选择不放。
                 dp[i][j] = dp[i - 1][j];
             } else {
                 // 否则可以放入，那么就要选择不放入和放入两种情况中的最大值。
@@ -260,22 +260,67 @@ function maxBagValue(nums, k) {
     }
     return dp[length - 1][k]
 }
-
 /**
- * 
- * @空间优化
- * 对于任意的 i 的物品，放入背包的价值至于dp[i - 1]有关，与i - 2, i - 3无关，所以这部分的空间占用是可以优化掉的。
- * 尝试可以将这一维的空间去掉
+ * @背包问题循环空间优化1
+ * 从递推方程上看，dp[i][j] = Math.max(dp[i - 1][j], dp[i - 1][j - weight[i]] + values[i])
+ * dp[i][j] 取值只与 dp[i-1][j] 和 weight[i]、values[i] 有关系，那么进一步看，i 只与 i - 1 有关（j 和 j 有关是必然的，不需要考虑）。
+ * 也就是说，对于二维数组 dp[i][j] 的第 i 行只与第 i - 1 行有关，那么对于第 i - 1 行之前的空间占用，属于浪费，可以被优化掉。优化方法是
+ * 设置 dp 只是一个两行的二维数组，即只有 dp[0] 和 dp[1] 这两行。每次求得的 dp值存于 dp[1]，而上一次的值，从 dp[1] 中挪到 dp[0] 中，
+ * 这也是滑动数组的实现思想。这样，只需要两行空间即可完成遍历。
  */
-function maxBagValue(nums, k) {
+function knapsackProblem2(nums, k) {
     // 条件判断
     if (!nums || !nums.length || !k) return 0;
     // 拆值
     const weights = nums.map(g => g[0]);
     const values = nums.map(g => g[1]);
     const length = nums.length;
+    // 初始化 dp 数组，2 行即可
+    const dp = new Array(2).fill(0).map(_ => new Array(k).fill(0));
+    // 背包空间是 k，只有 1 个物品(values[0])时的 dp 取值
+    // 因为如果 j < weights[0] 的话，dp[0][j] 的价值肯定是 0，当 j >= weight[0] 时，才能将 values[0] 放入背包。所以这里 j 初
+    // 始化时直接以 weight[0] 开始，算是个窍门。
+    for (let j = weights[0]; j < k; i++) {
+        dp[0][j] = values[0];
+    }
+    // 循环商品，拿到一个商品尝试能否放入容量为 j 的背包中。
+    for (let i = 1; i < nums.length - 1; i++) {
+        for (let j = 0; j <= k; j++) {
+            // 背包空间放不下当前的物品体积
+            if (j < weights[i]) {
+                dp[1][j] = dp[0][j];
+            } else {
+                const temp = dp[1][j];
+                dp[1][j] = Math.max(dp[0][j], dp[0][j - weight[i]] + values[i]);
+                dp[0][j] = temp;
+            }
+        }
+    }
+    return dp[1][k];
+}
+/**
+ * @背包问题循环空间优化2
+ * 上一步优化中，利用了第一位数组的滚动算法来解决多余空间占用的问题。二维数组占用实际上同样可以被压缩。使用两行二维数组的原因是用来承载
+ * 每次计算出来的 i 和 i - 1 行的结果。那么有没有可能只利用以为数组，即  dp[0 - j] 的来存储当前的计算结果和上一步的计算结果？当我们
+ * 当每次通过计算得出 f[i - 1][j] 时，可以将结果存放在另外一个数组 B 中，这个数组 B 也可以是 dp 数组，即:
+ * B[j] = Math.max(dp[i - 1][j], dp[i - 1][j - weight[i]] + values[i])，涉及到 j 与 j - weight[i] 有一定的关系，所以 
+ * j 肯定与 j - 1 有必然的联系，j 依赖于 j - 1 才能推导出来。对于 j 的循环，必然是要从大向小循环才行。不然的话，dp[j - 1] 会在本轮循环
+ * 中被下一个覆盖掉。导致 dp[j] 的依赖变化，而得不到正确的结果.
+ */
+function knapsackProblem3(nums, k) {
+    if (!nums || !nums.length || !k) return 0;
+    // 拆值
+    const weights = nums.map(g => g[0]);
+    const values = nums.map(g => g[1]);
+    const length = nums.length;
+    // 初始化第 0 个物品和背包空间是 0 的最大价值是 0；
     const dp = new Array(k).fill(0);
-
+    for (let i = 1; i < nums.length; i++) {
+        for (let j = k; j >= 0; j--) {
+            dp[j] = Math.max(dp[j], dp[j - weights[i]] + values[i]);
+        }
+    }
+    return dp[k]
 }
 
 /**
@@ -301,6 +346,7 @@ function canPartition(nums) {
     if (sum % 2 === 1) return false; // 和为奇数不可分两份相同大小的。
     const target = sum / 2;
     const length = nums.length;
+    const dp = new Array(target + 1).fill(0);
     for (let i = 0; i < length; i++) {
         for (let j = target; j >= nums[i]; j--) {
             dp[j] = Math.max(dp[j], dp[j - nums[i]] + nums[i]);
@@ -308,3 +354,40 @@ function canPartition(nums) {
     }
     return dp[target] === target;
 }
+
+/**
+ * 1049. 最后一块石头的重量2
+ * 有一堆石头，每块石头的重量都是正整数。
+ * 每一回合，从中选出任意两块石头，然后将它们一起粉碎。假设石头的重量分别为 x 和 y，且 x <= y。 那么粉碎的可能结果如下:
+ * 如果 x == y，那么两块石头都会被完全粉碎;
+ * 如果 x != y，那么重量为 x 的石头将会完全粉碎，而重量为 y 的石头新重量为 y-x。 最后，最多只会剩下一块石头。返回此石头最小的可能重量。如果没有石头剩下，就返回 0。
+ * 示例:
+ * 输入:[2,7,4,1,8,1]
+ * 输出:1
+ * 解释:
+ * 组合 2 和 4，得到 2，所以数组转化为 [2,7,1,8,1]，
+ * 组合 7 和 8，得到 1，所以数组转化为 [2,1,1,1]，
+ * 组合 2 和 1，得到 1，所以数组转化为 [1,1,1]，
+ * 组合 1 和 1，得到 0，所以数组转化为 [1]，这就是最优值。
+ * 提示：
+ * 1 <= stones.length <= 30;
+ * 1 <= stones[i] <= 1000;
+ */
+/**
+ * @思路 因为有两块石头相撞后的逻辑，那么尽可能安排两堆重量一样的石头互相来撞，最终得到的差值应该也是最小的。所以问题可以转化为将一堆重量各有差
+ * 别的石头，分成两堆总重差不多石头。首先要知道石头的全部重量，分成两份每份重 sum / 2。然后从石头堆里挑石头，尽可能装满 sum / 2 的重量。所以
+ * 又回到了背包问题，从一堆石头中挑石头，装满 sum / 2 的背包。与 416 分割等和子集相同。
+ */
+function lastStoneWeightII(nums) {
+    if (!nums || !nums.length) return 0;
+    const sum = nums.reduce((all, n) => all + n, 0);
+    const target = Math.floor(sum / 2);
+    const dp = new Array(target + 1).fill(0);
+    for (let i = 0; i < nums.length; i++) {
+        for (let j = target; j < nums[i]; j--) {
+            dp[j] = Math.max(dp[j], dp[j - nums[i]] + nums[i]);
+        }
+    }
+    return sum - dp[target] - dp[target];
+}
+
