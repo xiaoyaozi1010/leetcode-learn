@@ -1274,6 +1274,58 @@ var threeSumClosest = function(nums, target) {
  * 17. 电话号码号码的字母组合。
  * 给定一个电话号码的键盘，数字2 - 9分别对应的不同字母：2: abc, 3: def, 4: ghi, 5: jkl, 6: mno, 7: pqrs, 8: tuv, 9: wxyz。
  * 给定一个2-9的数字字符串，返回所有可能组成的字母组合。
- * 回溯算法，循环递归操作。
+ * @思路
+ * 回溯，从第一层开始循环，每次进入一层后，参数 i 自增 1，当层数增加到输入长度时，说明已经递归最深的那一层上，那么就可以将当前匹配到的字符
+ * 放入结果中，否则继续深入。这里将没有将第一层拿出来，因为第一层也符合循环的方法。意思是从第 0 层开始。
 **/
-
+function letterCombinations(digits) {
+	// '234'
+	const map = ['', '', 'abc', 'def', 'ghi', 'jkl', 'mno', 'pqrs', 'tuv', 'wxyz'];
+	if (!digits || !digits.length) return [];
+	if (digits.length === 1) return map[digits[0]].split('');
+	const length = digits.length;
+	const res = [];
+	// str 表示当前匹配到的组合字符，i 表示 level，即层数
+	const dfs = (str, i) => {
+		// 到最后一层，直接推入结果
+		if (i === digits.length) {
+			res.push(str);
+			return;
+		}
+		const curNum = digits[i]; // 当前的数字，2\3\4
+		const letters = map[curNum]; // 拿到对应的字母 'def' 等；
+		for (let letter of letters) {
+			// i + 1 表示继续深入一层
+			dfs(str + letter, i + 1);
+		}
+	}
+	// 这里是入口，从第 0 层入手，第 0 层是虚构出来的一层，任何输入都没有。
+	dfs('', 0);
+	return res;
+}
+/**
+ * @队列方法 ⭐️⭐️⭐️⭐️⭐️
+ * 同样是回溯，不同的是利用队列原理。
+ * 维护一个队列。最初队列输入空字符串作为开始，之后将 digits 按顺序找到对应的字符串作为下一层当的字符串。
+ * 当前字符串出列，作为构建下一层字符串的母串，拼入下一层输入字符串，入列。队列长度更新，循环继续进入下一层。
+ */
+function letterCombinations2(digits) {
+	if (!digits || !digits.length) return [];
+	if (digits.length === 1) return map[digits[0]].split('');
+	const queue = []; // 定义队列
+	const map = ['', '', 'abc', 'def', 'ghi', 'jkl', 'mno', 'pqrs', 'tuv', 'wxyz'];
+	queue.push(''); // 队列开始
+	// 循环数字 '234'
+	for (let i = 0; i < digits.length; i++) {
+		// 当前层的字符个数
+		const curLevelSize = queue.length;
+		for (let j = 0; j < curLevelSize; j++) {
+			const cur = queue.shift(); // 从顶部出列
+			const letters = map[digits[i]]; // 一层
+			for (let letter of letters) {
+				queue.push(cur + letter); // 拼入当前字符，入栈
+			}
+		}
+	}
+	return queue;
+}
