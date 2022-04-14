@@ -209,7 +209,7 @@ function buildTree(inOrder, postOrder) {
     });
     // 参数：中序结果，后序结果，中序子树左边界，中序子树有边界，后序子树左边界，后序子树右边界
     const buildSubTree = (inOrder, postOrder, inOrderLeft, inOrderRight, postOrderLeft, postOrderRight) => {
-        if (postOrderLeft > postOrderRight) {
+        if (inOrderLeft > inOrderRight) {
             return null;
         }
         // 先找到根节点位置，在后序结果的最后一位上：[左子树，右子树，根节点]
@@ -221,8 +221,8 @@ function buildTree(inOrder, postOrder) {
         // 创建根节点并关联左子树右子树
         const root = new TreeNode(postOrder[rootIndex]);
         // 关联左子树，需要找到左子树在中序、后序节点中的左右边界
-        root.left = buildSubTree(inOrder, postOrder, inOrderLeft, inOrderRootIndex - 1, postOrderLeft, postOrderLeft + leftSubTreeSize);
-        root.right = buildSubTree(inOrder, postOrder, inOrderRootIndex + 1, postOrderLeft + subTreeSize + 1, postOrderRight);
+        root.left = buildSubTree(inOrder, postOrder, inOrderLeft, inOrderRootIndex - 1, postOrderLeft, postOrderLeft + leftSubTreeSize - 1);
+        root.right = buildSubTree(inOrder, postOrder, inOrderRootIndex + 1, inOrderRight, postOrderLeft + leftSubTreeSize, postOrderRight - 1);
         return root;
     }
     return buildSubTree(inOrder, postOrder, 0, size - 1, 0, size - 1);
